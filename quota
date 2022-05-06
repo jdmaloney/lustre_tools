@@ -31,8 +31,8 @@ for u in ${usr_check_path[@]}
 do
         IFS=" " read FPATH BLOCK_FINAL BQUOTA_FINAL BLIMIT_FINAL FILE FQUOTA FLIMIT <<< "$(/usr/bin/lfs quota -hu $USER ${u} | grep -v "is using" | tail -n -1 | xargs | awk '{print $1" "$2" "$3" "$4" "$6" "$7" "$8}')"
         printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
-done
 printf '%95s\n' | tr ' ' -
+done
 
 ## Check Group Quotas and print them
 
@@ -59,8 +59,8 @@ do
 			printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
 		done
 	done
-done
 printf '%95s\n' | tr ' ' -
+done
 
 ## Clean up
 rm -rf "${tfile}"
