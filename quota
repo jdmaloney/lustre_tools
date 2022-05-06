@@ -1,0 +1,66 @@
+#!/bin/bash
+
+## Skip this for user root
+if [[ $EUID -eq 0 ]]; then
+   exit 1
+fi
+
+## Config Block ##
+report_home=yes ## yes or {anything else == no}
+usr_check_path=() ## ex. /lustre/myfs
+grp_check_path=() ## ex. /projects/ or /scratch/
+
+tfile=$(mktemp /tmp/userquota.XXXXXXX)
+
+## Home/User Header section
+echo "Quota usage for user ${USER}:"
+printf '%95s\n' | tr ' ' -
+printf '|        Directory Path        |  User   |  User   |  User   |   User   |   User   |   User   |\n';
+printf '|                              |  Block  |  Soft   |  Hard   |   File   |   Soft   |   Hard   |\n';
+printf '|                              |  Used   |  Quota  |  Limit  |   Used   |   Quota  |   Limit  |\n';
+printf '%95s\n' | tr ' ' -
+
+## Print HOME if requested
+if [ "${report_home}" == "yes" ]; then
+	IFS=" " read FPATH BLOCK_FINAL BQUOTA_FINAL BLIMIT_FINAL FILE FQUOTA FLIMIT <<< "$(/usr/bin/lfs quota -hu $USER $HOME | grep -v "is using" | tail -n -1 | xargs | awk '{print $1" "$2" "$3" "$4" "$6" "$7" "$8}')"
+	printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
+fi
+
+## Check User Quotas and print them
+for u in ${usr_check_path[@]}
+do
+        IFS=" " read FPATH BLOCK_FINAL BQUOTA_FINAL BLIMIT_FINAL FILE FQUOTA FLIMIT <<< "$(/usr/bin/lfs quota -hu $USER ${u} | grep -v "is using" | tail -n -1 | xargs | awk '{print $1" "$2" "$3" "$4" "$6" "$7" "$8}')"
+        printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
+done
+printf '%95s\n' | tr ' ' -
+
+## Check Group Quotas and print them
+
+## Group Header section
+printf '%s\n'
+echo "Quota usage for groups user ${USER} is a member of:"
+printf '%95s\n' | tr ' ' -
+printf '|        Directory Path        |  Group  |  Group  |  Group  |   Group  |   Group  |   Group  |\n';
+printf '|                              |  Block  |  Soft   |  Hard   |   File   |   Soft   |   Hard   |\n';
+printf '|                              |  Used   |  Quota  |  Limit  |   Used   |   Quota  |   Limit  |\n';
+printf '%95s\n' | tr ' ' -
+
+## Get my groups and check all for any quotas
+my_groups=($(groups))
+for g in ${grp_check_path[@]}
+do
+	ls -la ${g} | egrep '^d' | awk '{print $4" "$9}' | tail -n +4 > "${tfile}"
+	for m in ${my_groups[@]}
+	do
+		valid_dirs=($(awk -v group="${m}" '$1 == group {print $2}' "${tfile}"| xargs))
+		for v in ${valid_dirs[@]}
+		do
+			IFS=" " read FPATH BLOCK_FINAL BQUOTA_FINAL BLIMIT_FINAL FILE FQUOTA FLIMIT <<< "$(/usr/bin/lfs quota -qhg "${m}" "${g}""${v}" | grep -v "is using" | xargs | awk '{print $1" "$2" "$3" "$4" "$6" "$7" "$8}')"
+			printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
+		done
+	done
+done
+printf '%95s\n' | tr ' ' -
+
+## Clean up
+rm -rf "${tfile}"
