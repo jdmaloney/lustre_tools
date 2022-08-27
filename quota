@@ -22,16 +22,30 @@ printf '%95s\n' | tr ' ' -
 
 ## Print HOME if requested
 if [ "${report_home}" == "yes" ]; then
-	IFS=" " read FPATH BLOCK_FINAL BQUOTA_FINAL BLIMIT_FINAL FILE FQUOTA FLIMIT <<< "$(/usr/bin/lfs quota -hu $USER $HOME | grep -v "is using" | tail -n -1 | xargs | awk '{print $1" "$2" "$3" "$4" "$6" "$7" "$8}')"
-	printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
+	/usr/bin/lfs quota -hu $USER $HOME | grep -v "is using" > "${tfile}"
+	if [ $(wc -l "${tfile}" | awk '{print $1}') -eq 3 ]; then
+		IFS=" " read FPATH BLOCK_FINAL BQUOTA_FINAL BLIMIT_FINAL FILE FQUOTA FLIMIT <<< "$(tail -n -1 "${tfile}" | xargs | awk '{print $1" "$2" "$3" "$4" "$6" "$7" "$8}')"
+		printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
+	else
+		FPATH=$(tail -n 2 "${tfile}" | head -n 1 | awk '{print $1}')
+		IFS=" " read BLOCK_FINAL BQUOTA_FINAL BLIMIT_FINAL FILE FQUOTA FLIMIT <<< "$(tail -n -1 "${tfile}" | xargs | awk '{print $1" "$2" "$3" "$5" "$6" "$7}')"
+                printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
+	fi
+
 fi
 
 ## Check User Quotas and print them
 for u in ${usr_check_path[@]}
 do
-        IFS=" " read FPATH BLOCK_FINAL BQUOTA_FINAL BLIMIT_FINAL FILE FQUOTA FLIMIT <<< "$(/usr/bin/lfs quota -hu $USER ${u} | grep -v "is using" | tail -n -1 | xargs | awk '{print $1" "$2" "$3" "$4" "$6" "$7" "$8}')"
-        printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
-printf '%95s\n' | tr ' ' -
+	/usr/bin/lfs quota -hu $USER ${u} | grep -v "is using" > "${tfile}"
+        if [ $(wc -l "${tfile}" | awk '{print $1}') -eq 3 ]; then
+                IFS=" " read FPATH BLOCK_FINAL BQUOTA_FINAL BLIMIT_FINAL FILE FQUOTA FLIMIT <<< "$(tail -n -1 "${tfile}" | xargs | awk '{print $1" "$2" "$3" "$4" "$6" "$7" "$8}')"
+                printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
+        else
+                FPATH=$(tail -n 2 "${tfile}" | head -n 1 | awk '{print $1}')
+                IFS=" " read BLOCK_FINAL BQUOTA_FINAL BLIMIT_FINAL FILE FQUOTA FLIMIT <<< "$(tail -n -1 "${tfile}" | xargs | awk '{print $1" "$2" "$3" "$5" "$6" "$7}')"
+                printf "| %-28s | %-7s | %-7s | %-7s | %-8s | %-8s | %-8s |" "$FPATH" "$BLOCK_FINAL" "$BQUOTA_FINAL" "$BLIMIT_FINAL" "$FILE" "$FQUOTA" "$FLIMIT"; printf '%s\n'
+        fi
 done
 
 ## Check Group Quotas and print them
